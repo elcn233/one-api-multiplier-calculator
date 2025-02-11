@@ -37,7 +37,11 @@ function calculateMultipliers(inputPrice: number, outputPrice: number, isPerMill
 
 const Calculator: React.FC = () => {
   const localStorageKey = 'calculatorData';
-  const [isPerMillion, setIsPerMillion] = useState(false); // 跟踪计算是每1k还是1M
+  const unitStorageKey = 'isPerMillion'; // Key for storing the unit preference
+  const [isPerMillion, setIsPerMillion] = useState<boolean>(() => {
+    const storedUnit = localStorage.getItem(unitStorageKey);
+    return storedUnit ? JSON.parse(storedUnit) : false; // Default to 1K if no preference is stored
+  });
   const [rows, setRows] = useState<RowData[]>(() => {
     const storedData = localStorage.getItem(localStorageKey);
     if (!storedData) {
@@ -73,15 +77,18 @@ const Calculator: React.FC = () => {
   };
 
   const toggleUnit = () => {
-    const newRows = convertPrices(rows, !isPerMillion);
+    const newIsPerMillion = !isPerMillion;
+    const newRows = convertPrices(rows, newIsPerMillion);
     setRows(newRows);
-    setIsPerMillion(!isPerMillion);
+    setIsPerMillion(newIsPerMillion);
     localStorage.setItem(localStorageKey, JSON.stringify(newRows.map(row => ({ ...row, originalValues: null }))));
+    localStorage.setItem(unitStorageKey, JSON.stringify(newIsPerMillion)); // Store the unit preference
   };
 
   const resetData = () => {
     if (window.confirm("您确定要重置数据吗？此操作无法撤销。")) {
       localStorage.removeItem(localStorageKey);
+      localStorage.removeItem(unitStorageKey); // Also clear the unit preference
       setIsPerMillion(false); // Reset unit to 1K
       setRows(defaultData.map((row: any) => {
         const { modelMultiplier, completionMultiplier } = calculateMultipliers(row.inputPrice, row.outputPrice, false);
@@ -96,14 +103,14 @@ const Calculator: React.FC = () => {
   };
 
   const addRow = () => {
-    setRows(prevRows => [...prevRows, { 
-      modelName: '', 
-      inputPrice: 0, 
-      outputPrice: 0, 
-      modelMultiplier: 0, 
-      completionMultiplier: 0, 
-      editing: true, 
-      originalValues: null 
+    setRows(prevRows => [...prevRows, {
+      modelName: '',
+      inputPrice: 0,
+      outputPrice: 0,
+      modelMultiplier: 0,
+      completionMultiplier: 0,
+      editing: true,
+      originalValues: null
     }]);
     // Scroll to the bottom of the page
     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
